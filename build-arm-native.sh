@@ -110,7 +110,7 @@ build_chromium() {
 
     local tag_ver; tag_ver="$(major_minor "${CHROMIUM_VERSION:-latest}")"
     local dev_tag="${IMAGE_PREFIX}/dev_chromium:${tag_ver}"
-    local final_tag="${IMAGE_PREFIX}/vnc_arm64:chromium_${tag_ver}"
+    local final_tag="${IMAGE_PREFIX}/chromium:${tag_ver}"
 
     # Assemble a build context that contains:
     #   - the Dockerfile
@@ -151,7 +151,8 @@ build_firefox() {
 
     local tag_ver; tag_ver="$(major_minor "${FIREFOX_VERSION:-latest}")"
     local dev_tag="${IMAGE_PREFIX}/dev_firefox:${tag_ver}"
-    local final_tag="${IMAGE_PREFIX}/vnc_arm64:firefox_${tag_ver}"
+    # Final runtime image used by Selenoid — set to firefox:latest
+    local final_tag="${IMAGE_PREFIX}/firefox:${tag_ver}"
 
     # Assemble the dev build context (same pattern as Chromium)
     local dev_ctx; dev_ctx="$(make_tmpdir)"
