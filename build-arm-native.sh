@@ -63,9 +63,18 @@ major_minor() {
     echo "$1" | grep -oE '^[0-9]+\.[0-9]+' || echo "$1"
 }
 
+# Temp dirs are tracked globally and deleted on EXIT.
+# Using a subshell trap inside make_tmpdir caused the dir to be deleted
+# immediately when the $(...) subshell exited — before cp could use it.
+TMPDIR_LIST=()
+cleanup_tmpdirs() {
+    for d in "${TMPDIR_LIST[@]:-}"; do rm -rf "$d"; done
+}
+trap cleanup_tmpdirs EXIT
+
 make_tmpdir() {
     local d; d="$(mktemp -d)"
-    trap "rm -rf '$d'" EXIT
+    TMPDIR_LIST+=("$d")
     echo "$d"
 }
 
