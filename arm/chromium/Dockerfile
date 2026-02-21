@@ -10,8 +10,8 @@ FROM ${DEV_IMAGE}
 
 ENV DBUS_SESSION_BUS_ADDRESS=/dev/null
 COPY entrypoint.sh /
-
 RUN \
+    chmod +x /entrypoint.sh && \
     chmod +x /usr/bin/chromedriver && \
     echo "cookie-file = ~/.config/pulse/cookie" >> /etc/pulse/client.conf
 

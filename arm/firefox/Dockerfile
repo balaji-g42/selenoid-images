@@ -42,6 +42,8 @@ RUN sed "s/@@VERSION@@/${FIREFOX_MAJOR_VERSION}/g" \
 
 COPY entrypoint.sh /
 
+RUN chmod +x /entrypoint.sh
+
 USER selenium
 
 EXPOSE 4444
