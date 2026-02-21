@@ -75,11 +75,13 @@ RUN \
     # Also symlink chromedriver name used by selenoid
     ln -sf /usr/bin/chromedriver /usr/bin/chromedriver || true && \
     chromium --version && \
-    # Timezone / locale
+    # Timezone
     echo UTC | tee /etc/timezone && \
     dpkg-reconfigure -f noninteractive tzdata && \
-    locale-gen en_US.UTF-8 && \
-    update-locale LANG=en_US.UTF-8 && \
+    # Locale — must add entry to /etc/locale.gen before running locale-gen on Debian slim
+    echo "en_US.UTF-8 UTF-8" >> /etc/locale.gen && \
+    locale-gen && \
+    echo "LANG=en_US.UTF-8" > /etc/default/locale && \
     fc-cache -f && \
     # selenium user (uid 4096, no password, home /home/selenium)
     adduser --system --home /home/selenium --uid 4096 \
