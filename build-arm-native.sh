@@ -85,9 +85,19 @@ check_arch() {
 # 1. browsers/base
 # =============================================================================
 build_base() {
-    log "Building browsers/base:${BASE_TAG}"
+    log "Building browsers/base:${BASE_TAG} (Ubuntu 22.04 — for Firefox / Edge)"
     docker_build "$BASE_DOCKERFILE" "browsers/base:${BASE_TAG}"
     push_image "browsers/base:${BASE_TAG}"
+}
+
+# browsers/base:focal — Ubuntu 20.04 variant used by Chromium dev image.
+# Ubuntu 22.04 ships chromium-browser as a snap stub; 20.04 (focal) has the
+# real .deb so we build a dedicated base tag for Chromium.
+build_base_focal() {
+    log "Building browsers/base:focal (Ubuntu 20.04 — for Chromium)"
+    docker_build "$BASE_DOCKERFILE" "browsers/base:focal" \
+        --build-arg "UBUNTU_VERSION=20.04"
+    push_image "browsers/base:focal"
 }
 
 # =============================================================================
@@ -197,6 +207,7 @@ main() {
     echo ""
 
     build_base
+    build_base_focal
 
     for browser in $BUILD_BROWSERS; do
         case "$browser" in

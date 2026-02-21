@@ -1,10 +1,18 @@
 # ARM64-compatible Chromium dev image.
-# chromium-browser and chromium-chromedriver are available in Ubuntu's
-# multi-arch apt repos for arm64 — no arch= pin is needed.
-FROM browsers/base:7.4.2
+#
+# Ubuntu 22.04 replaced chromium-browser with a snap stub — the real .deb
+# package still exists on Ubuntu 20.04 (focal).  We use browsers/base:focal
+# (browsers/base built with UBUNTU_VERSION=20.04) so we keep all the desktop
+# tooling (xvfb, pulseaudio, fileserver, xseld, fluxbox) AND get a genuine
+# chromium-browser deb.
+#
+# chromium-chromedriver is co-versioned with chromium-browser on focal, so
+# both packages resolve to the same version automatically.
+FROM browsers/base:focal
 
 ARG VERSION
 ARG PACKAGE=chromium-browser
+ARG DEBIAN_FRONTEND=noninteractive
 
 LABEL browser=$PACKAGE:$VERSION
 
@@ -13,6 +21,8 @@ LABEL browser=$PACKAGE:$VERSION
 RUN \
     apt-get update && \
     apt-get -y --no-install-recommends install \
+      ca-certificates \
+      curl \
       iproute2 \
       libgtk-3-0 \
       ${PACKAGE}${VERSION:+=$VERSION} \
