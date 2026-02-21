@@ -40,7 +40,7 @@ SELENOID_VERSION="${SELENOID_VERSION:-1.11.3}"
 IMAGE_PREFIX="${IMAGE_PREFIX:-gbalajihbox}"
 NO_CACHE="${NO_CACHE:-0}"
 PUSH="${PUSH:-0}"
-BUILD_BROWSERS="${BUILD_BROWSERS:-chromium firefox edge}"
+BUILD_BROWSERS="${BUILD_BROWSERS:-chromium firefox}"
 
 log()  { echo "==> $*"; }
 info() { echo "    $*"; }
@@ -153,15 +153,20 @@ build_firefox() {
     local dev_tag="${IMAGE_PREFIX}/dev_firefox:${tag_ver}"
     local final_tag="${IMAGE_PREFIX}/vnc_arm64:firefox_${tag_ver}"
 
+    # Assemble the dev build context (same pattern as Chromium)
+    local dev_ctx; dev_ctx="$(make_tmpdir)"
+    cp    "${ARM_DIR}/firefox/dev/Dockerfile"            "${dev_ctx}/Dockerfile"
+    cp -r "${SCRIPT_DIR}/selenium/base/xseld"            "${dev_ctx}/xseld"
+    cp -r "${SCRIPT_DIR}/selenium/base/fileserver"       "${dev_ctx}/fileserver"
+    cp -r "${SCRIPT_DIR}/selenium/base/fluxbox"          "${dev_ctx}/fluxbox"
+
     log "Building Firefox dev image: $dev_tag"
-    docker_build "${ARM_DIR}/firefox/dev" "$dev_tag" \
-        "${ver_arg[@]}" \
-        --build-arg "PPA=ppa:mozillateam/ppa"
+    docker_build "$dev_ctx" "$dev_tag" "${ver_arg[@]}"
 
     local ctx; ctx="$(make_tmpdir)"
-    cp "${ARM_DIR}/firefox/Dockerfile"               "${ctx}/Dockerfile"
-    cp "${STATIC_DIR}/firefox/selenoid/browsers.json" "${ctx}/browsers.json"
-    cp "${STATIC_DIR}/firefox/selenoid/entrypoint.sh" "${ctx}/entrypoint.sh"
+    cp "${ARM_DIR}/firefox/Dockerfile"                    "${ctx}/Dockerfile"
+    cp "${STATIC_DIR}/firefox/selenoid/browsers.json"    "${ctx}/browsers.json"
+    cp "${STATIC_DIR}/firefox/selenoid/entrypoint.sh"    "${ctx}/entrypoint.sh"
 
     log "Building Firefox final image: $final_tag"
     docker_build "$ctx" "$final_tag" \
@@ -178,39 +183,15 @@ build_firefox() {
 }
 
 # =============================================================================
-# 4. Microsoft Edge (arm64 packages available from packages.microsoft.com)
+# 4. Microsoft Edge — NOT available for Linux arm64
 # =============================================================================
 build_edge() {
-    if [ -z "$EDGE_DRIVER_VERSION" ]; then
-        echo "WARNING: EDGE_DRIVER_VERSION not set — skipping Edge." >&2
-        echo "         Set EDGE_DRIVER_VERSION=<version> matching EDGE_VERSION." >&2
-        return 0
-    fi
-
-    local ver_arg=()
-    [ -n "$EDGE_VERSION" ] && ver_arg=(--build-arg "VERSION=${EDGE_VERSION}")
-
-    local tag_ver; tag_ver="$(major_minor "${EDGE_VERSION:-latest}")"
-    local dev_tag="${IMAGE_PREFIX}/dev_edge:${tag_ver}"
-    local final_tag="${IMAGE_PREFIX}/vnc_arm64:edge_${tag_ver}"
-
-    log "Building Edge dev image: $dev_tag"
-    docker_build "${ARM_DIR}/edge/dev" "$dev_tag" "${ver_arg[@]}"
-
-    local ctx; ctx="$(make_tmpdir)"
-    cp "${ARM_DIR}/edge/Dockerfile"       "${ctx}/Dockerfile"
-    cp "${STATIC_DIR}/edge/entrypoint.sh" "${ctx}/entrypoint.sh"
-
-    log "Building Edge final image: $final_tag"
-    docker_build "$ctx" "$final_tag" \
-        --build-arg "DEV_IMAGE=${dev_tag}" \
-        --build-arg "VERSION=${tag_ver}" \
-        --build-arg "DRIVER_VERSION=${EDGE_DRIVER_VERSION}"
-
-    push_image "$dev_tag"
-    push_image "$final_tag"
-    info "Edge dev  : $dev_tag"
-    info "Edge final: $final_tag  (msedgedriver ${EDGE_DRIVER_VERSION})"
+    echo "" >&2
+    echo "ERROR: Microsoft Edge has no Linux arm64 build." >&2
+    echo "       Microsoft only publishes amd64 Linux packages." >&2
+    echo "       Use Chromium or Firefox as an arm64-compatible alternative." >&2
+    echo "" >&2
+    exit 1
 }
 
 # =============================================================================
@@ -230,6 +211,13 @@ main() {
             chromium) build_chromium ;;
             firefox)  build_firefox  ;;
             edge)     build_edge     ;;
+            opera|yandex)
+                echo "" >&2
+                echo "ERROR: '$browser' has no Linux arm64 build." >&2
+                echo "       Only Chromium and Firefox are available for arm64." >&2
+                echo "" >&2
+                exit 1
+                ;;
             *) echo "WARNING: Unknown browser '$browser' — skipping." >&2 ;;
         esac
     done
