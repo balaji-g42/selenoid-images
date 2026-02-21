@@ -2,8 +2,9 @@
 # Key difference: msedgedriver is downloaded for linux_arm64 instead of
 # linux64.  Microsoft publishes arm64 drivers at the same CDN URL with a
 # different archive name.
+ARG DEV_IMAGE
 ARG VERSION
-FROM selenoid/dev_edge:$VERSION
+FROM ${DEV_IMAGE}
 
 # Pin DRIVER_VERSION to the version that matches the Edge release.
 # Pass this via --build-arg DRIVER_VERSION=<version> (e.g. 135.0.3179.54).

@@ -90,15 +90,7 @@ build_base() {
     push_image "browsers/base:${BASE_TAG}"
 }
 
-# browsers/base:focal — Ubuntu 20.04 variant used by Chromium dev image.
-# Ubuntu 22.04 ships chromium-browser as a snap stub; 20.04 (focal) has the
-# real .deb so we build a dedicated base tag for Chromium.
-build_base_focal() {
-    log "Building browsers/base:focal (Ubuntu 20.04 — for Chromium)"
-    docker_build "$BASE_DOCKERFILE" "browsers/base:focal" \
-        --build-arg "UBUNTU_VERSION=20.04"
-    push_image "browsers/base:focal"
-}
+
 
 # =============================================================================
 # 2. Chromium
@@ -111,15 +103,29 @@ build_chromium() {
     local dev_tag="${IMAGE_PREFIX}/dev_chromium:${tag_ver}"
     local final_tag="${IMAGE_PREFIX}/vnc_arm64:chromium_${tag_ver}"
 
-    log "Building Chromium dev image: $dev_tag"
-    docker_build "${ARM_DIR}/chromium/dev" "$dev_tag" "${ver_arg[@]}"
-
+    # Assemble a build context that contains:
+    #   - the Dockerfile
+    #   - xseld/ and fileserver/ Go source trees
+    #   - fluxbox theme files
+    # (Docker COPY cannot reference paths outside the build context)
     local ctx; ctx="$(make_tmpdir)"
-    cp "${ARM_DIR}/chromium/Dockerfile"       "${ctx}/Dockerfile"
-    cp "${STATIC_DIR}/chromium/entrypoint.sh" "${ctx}/entrypoint.sh"
+    cp    "${ARM_DIR}/chromium/dev/Dockerfile"            "${ctx}/Dockerfile"
+    cp -r "${SCRIPT_DIR}/selenium/base/xseld"            "${ctx}/xseld"
+    cp -r "${SCRIPT_DIR}/selenium/base/fileserver"       "${ctx}/fileserver"
+    cp -r "${SCRIPT_DIR}/selenium/base/fluxbox"          "${ctx}/fluxbox"
+
+    log "Building Chromium dev image: $dev_tag"
+    docker_build "$ctx" "$dev_tag" "${ver_arg[@]}"
+
+    # Final image context
+    local final_ctx; final_ctx="$(make_tmpdir)"
+    cp "${ARM_DIR}/chromium/Dockerfile"       "${final_ctx}/Dockerfile"
+    cp "${STATIC_DIR}/chromium/entrypoint.sh" "${final_ctx}/entrypoint.sh"
 
     log "Building Chromium final image: $final_tag"
-    docker_build "$ctx" "$final_tag" --build-arg "VERSION=${tag_ver}"
+    docker_build "$final_ctx" "$final_tag" \
+        --build-arg "DEV_IMAGE=${dev_tag}" \
+        --build-arg "VERSION=${tag_ver}"
 
     push_image "$dev_tag"
     push_image "$final_tag"
@@ -150,6 +156,7 @@ build_firefox() {
 
     log "Building Firefox final image: $final_tag"
     docker_build "$ctx" "$final_tag" \
+        --build-arg "DEV_IMAGE=${dev_tag}" \
         --build-arg "VERSION=${tag_ver}" \
         --build-arg "FIREFOX_MAJOR_VERSION=${tag_ver}" \
         --build-arg "GECKODRIVER_VERSION=${GECKODRIVER_VERSION}" \
@@ -187,6 +194,7 @@ build_edge() {
 
     log "Building Edge final image: $final_tag"
     docker_build "$ctx" "$final_tag" \
+        --build-arg "DEV_IMAGE=${dev_tag}" \
         --build-arg "VERSION=${tag_ver}" \
         --build-arg "DRIVER_VERSION=${EDGE_DRIVER_VERSION}"
 
@@ -207,7 +215,6 @@ main() {
     echo ""
 
     build_base
-    build_base_focal
 
     for browser in $BUILD_BROWSERS; do
         case "$browser" in

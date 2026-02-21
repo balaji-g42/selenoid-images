@@ -3,8 +3,9 @@
 #   - geckodriver is downloaded for linux-aarch64 instead of linux64
 #   - selenoid is downloaded for linux_arm64 instead of linux_amd64
 #   - browsers.json is generated from a template via sed at build time
+ARG DEV_IMAGE
 ARG VERSION
-FROM selenoid/dev_firefox:$VERSION
+FROM ${DEV_IMAGE}
 
 # Override these to pin specific binary versions.
 ARG GECKODRIVER_VERSION=0.35.0
